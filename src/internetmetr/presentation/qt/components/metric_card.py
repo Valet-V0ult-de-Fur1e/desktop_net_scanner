@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QEasingCurve, QVariantAnimation, Qt
+from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout
 
@@ -14,11 +14,10 @@ class MetricCard(QFrame):
         self._border_color = "#E2E8F0"
         self._title_color = "#475569"
         self._value_color = "#0F172A"
-
-        self._pulse_animation = QVariantAnimation(self)
-        self._pulse_animation.setDuration(340)
-        self._pulse_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
-        self._pulse_animation.valueChanged.connect(self._on_pulse_color_changed)
+        self._pulse_timer = QTimer(self)
+        self._pulse_timer.setSingleShot(True)
+        self._pulse_timer.setInterval(140)
+        self._pulse_timer.timeout.connect(self._reset_to_base_style)
 
         self._title_label = QLabel(title)
         self._title_label.setObjectName("metricCardTitle")
@@ -39,6 +38,7 @@ class MetricCard(QFrame):
 
     def set_dark_mode(self, is_dark: bool) -> None:
         self._is_dark = is_dark
+        self._pulse_timer.stop()
         if is_dark:
             self._base_color = QColor("#11151C")
             self._highlight_color = QColor("#162236")
@@ -54,18 +54,19 @@ class MetricCard(QFrame):
 
         self._apply_style(self._base_color)
 
-    def set_value(self, value: str) -> None:
+    def set_value(self, value: str, animate: bool = True) -> None:
         self._value_label.setText(value)
-        self._pulse_animation.stop()
-        self._pulse_animation.setStartValue(self._highlight_color)
-        self._pulse_animation.setEndValue(self._base_color)
-        self._pulse_animation.start()
-
-    def _on_pulse_color_changed(self, color_obj: object) -> None:
-        if not isinstance(color_obj, QColor):
+        if not animate:
+            self._pulse_timer.stop()
+            self._apply_style(self._base_color)
             return
 
-        self._apply_style(color_obj)
+        self._pulse_timer.stop()
+        self._apply_style(self._highlight_color)
+        self._pulse_timer.start()
+
+    def _reset_to_base_style(self) -> None:
+        self._apply_style(self._base_color)
 
     def _apply_style(self, background_color: QColor) -> None:
         self.setStyleSheet(
